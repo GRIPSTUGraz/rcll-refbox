@@ -59,4 +59,7 @@ RUN dnf install -y --nodocs 'dnf-command(copr)' && \
 # Installation for tools you need...
 RUN dnf -y install net-tools nano
 
-CMD ["llsf-refbox"]
+# Start script for the refbox loads config for refbox
+COPY start.sh /start.sh
+
+CMD ["/start.sh"]
