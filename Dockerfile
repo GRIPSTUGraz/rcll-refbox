@@ -55,4 +55,8 @@ RUN echo /usr/local/lib64 > /etc/ld.so.conf.d/local.conf && /sbin/ldconfig
 RUN dnf install -y --nodocs 'dnf-command(copr)' && \
     dnf -y copr enable thofmann/freeopcua && \
     dnf install -y --nodocs $(cat /requires.txt) && dnf clean all && rm /requires.txt
+
+# Installation for tools you need...
+RUN dnf -y install net-tools nano
+
 CMD ["llsf-refbox"]
