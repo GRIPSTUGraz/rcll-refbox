@@ -1,5 +1,3 @@
-bash
-
 tmp=$(ifconfig | grep "broadcast")
 ip=${tmp:(-14)}
 cd /etc/rcll-refbox/
