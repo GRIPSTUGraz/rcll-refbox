@@ -1,4 +1,4 @@
-tmp=$(ifconfig | grep "broadcast")
+tmp=$(ifconfig eth0 | grep "broadcast")
 ip=${tmp:(-14)}
 cd /etc/rcll-refbox/
 sed "s/BROADCAST/$ip/g" outerconfig.yaml > config.yaml
