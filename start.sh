@@ -1,5 +1,5 @@
 tmp=$(ifconfig eth0 | grep "broadcast")
-ip=${tmp:(-14)}
+read tmp6 tmp5 tmp4 tmp3 tmp2 ip <<<$(IFS=" "  echo $tmp)
 cd /etc/rcll-refbox/
 sed "s/BROADCAST/$ip/g" outerconfig.yaml > config.yaml
 set -e
