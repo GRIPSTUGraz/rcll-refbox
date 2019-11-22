@@ -3,9 +3,8 @@
 ;  globals.clp - LLSF RefBox global CLIPS variables
 ;
 ;  Created: Tue Feb 12 23:26:48 2013
-;  Copyright  2013-2016  Tim Niemueller [www.niemueller.de]
-;             2017       Tobias Neumann
-;             2019       Till Hofmann
+;  Copyright  2013  Tim Niemueller [www.niemueller.de]
+;             2017  Tobias Neumann
 ;  Licensed under BSD license, cf. LICENSE file
 ;---------------------------------------------------------------------------
 
@@ -15,7 +14,7 @@
   ?*GAMESTATE-PERIOD* = 1.0
   ?*ROBOTINFO-PERIOD* = 0.25
   ?*BC-ROBOTINFO-PERIOD* = 2.5
-  ?*WORKPIECEINFO-PERIOD* = 2.0
+  ?*PUCKINFO-PERIOD* = 1.0
   ?*MACHINE-INFO-PERIOD* = 0.25
   ?*BC-ORDERINFO-PERIOD* = 2.0
   ?*BC-ORDERINFO-BURST-PERIOD* = 0.5
@@ -46,14 +45,11 @@
   ?*LOADED-WITH-MAX* = 3
   ; Machine processing times; seconds
   ?*PREPARED-BLINK-TIME* = 3
-  ; How long to stay in WAIT-IDLE before switching to IDLE state
-  ?*WAIT-IDLE-TIME* = 5
+  ; How long to wait after retrieval to switch to IDLE state
+  ?*RETRIEVE-WAIT-IDLE-TIME* = 5
   ; How long to wait after prepare before the MPS gets resetted
   ?*PREPARE-WAIT-TILL-RESET* = 45
-  ; How long to wait before resetting a machine that is processing
-  ?*PROCESSING-WAIT-TILL-RESET* = 90
   ?*PREPARE-WAIT-TILL-PROCESSING* = 5
-  ?*PROCESS-TIME-SS* = 5
 
   ; number of points for specific actions
   ?*EXPLORATION-CORRECT-REPORT-ROTATION-POINTS* = 1
@@ -70,19 +66,12 @@
 	?*PRODUCTION-POINTS-FINISH-C2-PRECAP* = 30
 	?*PRODUCTION-POINTS-FINISH-C3-PRECAP* = 80
 	?*PRODUCTION-POINTS-MOUNT-CAP* = 10
-	?*PRODUCTION-POINTS-RETRIEVE-CAP* = 2
 	?*PRODUCTION-POINTS-DELIVERY*  = 20
   ?*PRODUCTION-POINTS-DELIVERY-TOO-LATE* = 5
   ?*PRODUCTION-POINTS-DELIVERY-WRONG* = 1
   ?*PRODUCTION-DELIVER-MAX-LATENESS-TIME* = 10
   ?*PRODUCTION-POINTS-COMPETITIVE-FIRST-BONUS* = 10
   ?*PRODUCTION-POINTS-COMPETITIVE-SECOND-DEDUCTION* = 10
-  ?*PRODUCTION-POINTS-SS-RETRIEVAL* = -10
-	; Workpiece ranges
-	?*WORKPIECE-RANGE-RED* = (create$ 1001 1999)
-	?*WORKPIECE-RANGE-BLACK* = (create$ 2001 2999)
-	?*WORKPIECE-RANGE-SILVER* = (create$ 3001 3999)
-	?*WORKPIECE-RANGE-CLEAR* = (create$ 4001 4999)
   ; Setup light effects
   ?*SETUP-LIGHT-PERIOD* = 1.0
   ?*SETUP-LIGHT-PERIOD-1* = 0.5

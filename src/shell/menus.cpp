@@ -172,6 +172,78 @@ GenericItemsMenu::max_cols(int n_items, NCursesMenuItem **items)
 }
 
 
+MachinePlacingMenu::MachinePlacingMenu(NCursesWindow *parent,
+				       std::string machine, std::string puck,
+				       bool can_be_placed_under_rfid, bool can_be_loaded_with)
+  : Menu(det_lines(can_be_placed_under_rfid, can_be_loaded_with), 30,
+	 (parent->lines() - 5)/2, (parent->cols() - 30)/2)
+{
+  valid_selected_ = false;
+  place_under_rfid_ = false;
+  s_under_rfid_ = "Place " + puck.substr(0,2) + " under RFID of " + machine;
+  s_loaded_with_ = "Load " + machine + " with " + puck.substr(0,2);
+  s_cancel_ = "** CANCEL **";
+  NCursesMenuItem **mitems = new NCursesMenuItem*[4];
+
+  int idx = 0;
+
+  if (can_be_placed_under_rfid) {
+    SignalItem *item = new SignalItem(s_under_rfid_);
+    item->signal().connect(boost::bind(&MachinePlacingMenu::item_selected, this, true));
+    mitems[idx++] = item;
+  }
+
+  if (can_be_loaded_with) {
+    SignalItem *item = new SignalItem(s_loaded_with_);
+    item->signal().connect(boost::bind(&MachinePlacingMenu::item_selected, this, false));
+    mitems[idx++] = item;
+  }
+  mitems[idx++] = new SignalItem(s_cancel_);
+  mitems[idx++] = new NCursesMenuItem();
+    
+
+  set_mark("");
+  set_format(idx-1, 1);
+  InitMenu(mitems, true, true);
+  frame("Placing");
+}
+
+int
+MachinePlacingMenu::det_lines(bool can_be_placed_under_rfid, bool can_be_loaded_with)
+{
+  int rv = 3;
+  if (can_be_placed_under_rfid) rv += 1;
+  if (can_be_loaded_with) rv += 1;
+  return rv;
+}
+
+void
+MachinePlacingMenu::item_selected(bool under_rfid)
+{
+  valid_selected_ = true;
+  place_under_rfid_ = under_rfid;
+}
+
+bool
+MachinePlacingMenu::place_under_rfid()
+{
+  return place_under_rfid_;
+}
+
+void
+MachinePlacingMenu::On_Menu_Init()
+{
+  bkgd(' '|COLOR_PAIR(COLOR_DEFAULT));
+  //subWindow().bkgd(parent_->getbkgd());
+  refresh();
+}
+
+MachinePlacingMenu::operator bool() const
+{
+  return valid_selected_;
+}
+
+
 TeamSelectMenu::TeamSelectMenu(NCursesWindow *parent,
 			       llsf_msgs::Team team,
 			       std::shared_ptr<llsf_msgs::GameInfo> gameinfo,
@@ -324,78 +396,6 @@ TeamColorSelectMenu::det_lines()
   return team_enum_desc->value_count();
 }
 
-GameMenu::GameMenu(NCursesWindow *parent)
-: Menu(det_lines(), det_cols(), (parent->lines() - det_lines()) / 2, (parent->cols() - det_cols()) / 2),
-  menu_selected_(false)
-{
-	NCursesMenuItem **mitems         = new NCursesMenuItem *[3];
-	SignalItem *      randomize_item = new SignalItem(s_randomize_);
-	SignalItem *      cancel_item    = new SignalItem(s_cancel_);
-	randomize_item->signal().connect([this]() {
-		next_menu_     = randomize;
-		menu_selected_ = true;
-	});
-	int idx       = 0;
-	mitems[idx++] = randomize_item;
-	mitems[idx++] = cancel_item;
-	mitems[idx++] = new NCursesMenuItem();
-	set_mark("");
-	set_format(idx, 1);
-	InitMenu(mitems, true, true);
-}
-
-void
-GameMenu::On_Menu_Init()
-{
-  bkgd(' ' | COLOR_PAIR(COLOR_DEFAULT));
-  box();
-  attron(' ' | COLOR_PAIR(COLOR_BLACK_ON_BACK) | A_BOLD);
-  addstr(0, (width() - 6) / 2, " GAME ");
-  attroff(A_BOLD);
-  refresh();
-}
-
-GameMenu::SubMenu
-GameMenu::get_next_menu() const
-{
-  return next_menu_;
-}
-
-GameMenu::operator bool() const
-{
-  return menu_selected_;
-}
-
-
-RandomizeFieldMenu::RandomizeFieldMenu(NCursesWindow *parent)
-: Menu(det_lines(), det_cols(), (parent->lines() - det_lines()) / 2, (parent->cols() - det_cols()) / 2),
-  confirmed_(false)
-{
-	NCursesMenuItem **mitems   = new NCursesMenuItem *[3];
-	SignalItem *      yes_item = new SignalItem(s_yes_);
-	yes_item->signal().connect([this]() { confirmed_ = true; });
-	SignalItem *no_item = new SignalItem(s_no_);
-	no_item->signal().connect([this]() { confirmed_ = false; });
-	int idy       = 0;
-	mitems[idy++] = yes_item;
-	mitems[idy++] = no_item;
-  mitems[idy++] = new NCursesMenuItem();
-	set_mark("");
-	set_format(1, idy - 1);
-	InitMenu(mitems, true, true);
-}
-
-void
-RandomizeFieldMenu::On_Menu_Init()
-{
-  bkgd(' ' | COLOR_PAIR(COLOR_DEFAULT));
-  box();
-  attron(' ' | COLOR_PAIR(COLOR_BLACK_ON_BACK) | A_BOLD);
-  addstr(0, (width() - 18) / 2, " Randomize Field? ");
-  attroff(A_BOLD);
-  refresh();
-}
-
 
 RobotMaintenanceMenu::RobotMaintenanceMenu(NCursesWindow *parent, llsf_msgs::Team team,
 					   std::shared_ptr<llsf_msgs::RobotInfo> rinfo)
@@ -541,7 +541,7 @@ OrderDeliverMenu::OrderDeliverMenu
   (NCursesWindow *parent, llsf_msgs::Team team,
    std::shared_ptr<llsf_msgs::OrderInfo> oinfo,
    std::shared_ptr<llsf_msgs::GameState> gstate)
-  : Menu(det_lines(team, oinfo) + 2 + 2, 19 + 2,
+  : Menu(det_lines(team, oinfo) + 2 + 2, 18 + 2,
 	 (parent->lines() - (det_lines(team, oinfo) + 2))/2,
 	 (parent->cols() - 18)/2),
     oinfo_(oinfo), team_(team)
@@ -657,7 +657,7 @@ OrderDeliverMenu::On_Menu_Init()
     case llsf_msgs::BASE_BLACK:
       attron(' '|COLOR_PAIR(COLOR_WHITE_ON_BLACK));   break;
     }
-    addstr(i+1, 15, " ");
+    addstr(i+1, 14, " ");
 
     for (int j = 0; j < o.ring_colors_size(); ++j) {
       switch (o.ring_colors(j)) {
@@ -670,12 +670,12 @@ OrderDeliverMenu::On_Menu_Init()
       case llsf_msgs::RING_YELLOW:
 	attron(' '|COLOR_PAIR(COLOR_BLACK_ON_YELLOW)); break;
       }
-      addstr(i+1, 16+j, " ");
+      addstr(i+1, 15+j, " ");
     }
 
     for (int j = o.ring_colors_size(); j < 4; ++j) {
       attron(' '|COLOR_PAIR(COLOR_BLACK_ON_WHITE));
-      addstr(i+1, 16+j, " ");
+      addstr(i+1, 15+j, " ");
     }
 
     switch (o.cap_color()) {
@@ -684,10 +684,10 @@ OrderDeliverMenu::On_Menu_Init()
     case llsf_msgs::CAP_GREY:
       attron(' '|COLOR_PAIR(COLOR_BLACK_ON_WHITE)); break;
     }
-    addstr(i+1, 19, " ");
+    addstr(i+1, 18, " ");
 
     attron(' '|COLOR_PAIR(COLOR_BLACK_ON_BACK));
-    printw(i+1, 21, "D%u", o.delivery_gate());
+    printw(i+1, 20, "D%u", o.delivery_gate());
   }
 
   refresh();

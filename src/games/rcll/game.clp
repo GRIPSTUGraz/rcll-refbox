@@ -3,12 +3,29 @@
 ;  game.clp - LLSF RefBox CLIPS game maintenance
 ;
 ;  Created: Tue Jun 11 15:19:25 2013
-;  Copyright  2013-2016  Tim Niemueller [www.niemueller.de]
-;             2017       Tobias Neumann
-;             2019       Till Hofmann
-;             2019       Mostafa Gomaa
+;  Copyright  2013  Tim Niemueller [www.niemueller.de]
 ;  Licensed under BSD license, cf. LICENSE file
 ;---------------------------------------------------------------------------
+
+(deffunction game-reset ()
+
+  ; Retract machine initialization state, if set
+  (do-for-fact ((?mi machines-initialized)) TRUE
+    (retract ?mi)
+  )
+
+  ; retract all delivery periods
+  ;(printout t "Retracting delivery periods" crlf)
+  (delayed-do-for-all-facts ((?dp delivery-period)) TRUE
+    (retract ?dp)
+  )
+
+  ; reset all down periods
+  ;(printout t "Resetting down periods" crlf) 
+  (delayed-do-for-all-facts ((?m machine)) TRUE
+    (modify ?m (down-period (deftemplate-slot-default-value machine down-period)))
+  )
+)
 
 (deffunction game-calc-phase-points (?team-color ?phase)
   (bind ?phase-points 0)
@@ -27,8 +44,36 @@
   (return ?points)
 )
 
+(defrule game-reset
+  (game-reset) ; this is a fact
+  =>
+  (game-reset) ; this is a function
+)
+
+(defrule game-reset-re-parameterize
+  (game-reset)
+  ?gf <- (game-parameterized)
+  =>
+  (retract ?gf)
+)
+
+(defrule game-reset-print
+  (game-reset)
+  ?gf <- (game-printed)
+  =>
+  (retract ?gf)
+)
+  
+(defrule game-reset-done
+  (declare (salience -10000))
+  ?gf <- (game-reset)
+  =>
+  (retract ?gf)
+)
+
 (defrule game-mps-solver-start
   "start the solver"
+  (declare (salience ?*PRIORITY_HIGHER*))
   (gamestate (game-time ?gt))
   (not (game-parameterized))
   ?mg <- (machine-generation (state NOT-STARTED))
@@ -40,6 +85,7 @@
 
 (defrule game-mps-solver-check
   "check if the solver is finished"
+  (declare (salience ?*PRIORITY_HIGH*))
   (gamestate (phase SETUP|EXPLORATION|PRODUCTION) (prev-phase PRE_GAME) (game-time ?gt))
   ?mg <- (machine-generation (state STARTED) (generation-state-last-checked ?gs&:(timeout-sec ?gt ?gs ?*MACHINE-GENERATION-TIMEOUT-CHECK-STATE*)))
   =>
@@ -54,6 +100,7 @@
 )
 
 (defrule game-parameterize
+  (declare (salience ?*PRIORITY_HIGHER*))
   (gamestate (phase SETUP|EXPLORATION|PRODUCTION) (prev-phase PRE_GAME))
   (not (game-parameterized))
   (or (machine-generation (state FINISHED))
@@ -69,17 +116,10 @@
     (bind ?ring-colors (append$ ?ring-colors ?rs:color))
   )
   (bind ?ring-colors (randomize$ ?ring-colors))
-	(bind ?c1-first-ring (subseq$ ?ring-colors 1 1))
-	(bind ?c2-first-ring (subseq$ ?ring-colors 2 2))
-	(bind ?c3-first-ring (subseq$ ?ring-colors 3 3))
-	(bind ?cx-first-ring (subseq$ ?ring-colors 4 4))
 
-	(bind ?c1-counter 0)
-	(bind ?c2-counter 0)
-	(bind ?c3-counter 0)
   ; machine assignment if not already done
   (if (not (any-factp ((?mi machines-initialized)) TRUE))
-			then (machine-init-randomize ?ring-colors))
+   then (machine-init-randomize ?ring-colors))
 
   ; reset orders, assign random times
   (delayed-do-for-all-facts ((?order order)) TRUE
@@ -103,23 +143,12 @@
 		(if ?*RANDOMIZE-ACTIVATE-ALL-AT-START* then (bind ?activate-at 0))
     (bind ?gate (random 1 3))
 
-		; check workpiece-assign-order rule in workpieces.clp for specific
-		; assumptions for the 2016 game and order to workpiece assignment!
 		(bind ?order-ring-colors (create$))
 		(switch ?order:complexity
 			;(case C0 then) ; for C0 we have nothing to do, no ring color
-			(case C1 then (bind ?c1-counter (+ ?c1-counter 1))
-			              (if (<= ?c1-counter 1) then (bind ?first-ring ?c1-first-ring)
-			                                     else (bind ?first-ring ?cx-first-ring))
-			              (bind ?order-ring-colors (create$ ?first-ring)))
-			(case C2 then (bind ?c2-counter (+ ?c2-counter 1))
-			              (if (<= ?c2-counter 1) then (bind ?first-ring ?c2-first-ring)
-			                                     else (bind ?first-ring ?cx-first-ring))
-                             (bind ?order-ring-colors (create$ ?first-ring (subseq$ (randomize$ (remove$ ?ring-colors ?first-ring)) 1 1))))
-			(case C3 then (bind ?c3-counter (+ ?c3-counter 1))
-			              (if (<= ?c3-counter 1) then (bind ?first-ring ?c3-first-ring)
-			                                     else (bind ?first-ring ?cx-first-ring))
-			              (bind ?order-ring-colors (create$ ?first-ring (subseq$ (randomize$ (remove$ ?ring-colors ?first-ring)) 1 2))))
+			(case C1 then (bind ?order-ring-colors (subseq$ (randomize$ ?ring-colors) 1 1)))
+			(case C2 then (bind ?order-ring-colors (subseq$ (randomize$ ?ring-colors) 1 2)))
+			(case C3 then (bind ?order-ring-colors (subseq$ (randomize$ ?ring-colors) 1 3)))
     )
 
 		(bind ?order-base-color (pick-random$ (deftemplate-slot-allowed-values order base-color)))
@@ -350,7 +379,7 @@
   (delayed-do-for-all-facts ((?machine machine)) TRUE
     (modify ?machine (desired-lights RED-BLINK))
   )
-  (if (any-factp ((?pd referee-confirmation)) TRUE) then
+  (if (any-factp ((?pd product-delivered)) TRUE) then
     (assert (attention-message (text "Game ended, please confirm deliveries!")))
     (assert (postgame-for-unconfirmed-deliveries))
   else
@@ -358,57 +387,10 @@
   )
 )
 
-(defrule game-over-on-finalize
-	"Switch to post-game if the refbox is stopped"
-	(finalize)
-	?gs <- (gamestate (phase ~POST_GAME))
-	=>
-	(modify ?gs (phase POST_GAME))
-)
-
 (defrule game-postgame-no-unconfirmed-deliveries
   ?w <- (postgame-for-unconfirmed-deliveries)
-  (not (referee-confirmation))
+  (not (product-delivered))
   =>
   (retract ?w)
   (game-summary)
-)
-
-(deffunction game-reset ()
-	; Retract machine initialization state, if set
-	(do-for-fact ((?mi machines-initialized)) TRUE
-		(retract ?mi)
-	)
-	; Retract all delivery periods
-	(delayed-do-for-all-facts ((?dp delivery-period)) TRUE
-		(retract ?dp)
-	)
-	; Reset all down periods
-	(delayed-do-for-all-facts ((?m machine)) TRUE
-		(modify ?m (down-period (deftemplate-slot-default-value machine down-period)))
-	)
-	; Reset game parameterization
-	(do-for-fact ((?gp game-parameterized)) TRUE
-		(retract ?gp)
-	)
-	; Reset machine generation
-	(do-for-fact ((?mg machine-generation)) TRUE
-		(modify ?mg (state NOT-STARTED))
-	)
-	; Print machines again
-	(do-for-fact ((?mp machines-printed)) TRUE
-		(retract ?mp)
-	)
-	; Print game info again
-	(do-for-fact ((?gp game-printed)) TRUE
-		(retract ?gp)
-	)
-)
-
-(defrule game-reset
-	"Allow calling the function via fact to avoid file loading order issues"
-	?gr <- (game-reset)
-	=>
-	(retract ?gr)
-	(game-reset)
 )

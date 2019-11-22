@@ -281,13 +281,11 @@
 )
 
 (defrule mongodb-load-machine-zones
-	(declare (salience ?*PRIORITY_FIRST*))
-	(gamestate (phase SETUP|EXPLORATION|PRODUCTION) (prev-phase PRE_GAME))
-	(not (confval (path "/llsfrb/game/random-field") (type BOOL) (value true)))
-	; load only once
-	(not (loaded-machine-zones-from-db))
+  (declare (salience ?*PRIORITY_FIRST*))
+  (gamestate (phase SETUP|EXPLORATION|PRODUCTION) (prev-phase PRE_GAME))
+  (not (game-parameterized))
+  (test (any-factp ((?m machine)) (eq ?m:zone TBD)))
 	=>
-	(printout t "Loading machine positions from database" crlf)
-	(assert (loaded-machine-zones-from-db))
+  (printout t "load from mongo" crlf)
 	(mongodb-load-machine-zones)
 )

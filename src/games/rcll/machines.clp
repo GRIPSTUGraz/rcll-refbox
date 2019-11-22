@@ -10,7 +10,6 @@
 
 (defrule m-shutdown "Shutdown machines at the end"
   (finalize)
-	(gamestate (phase POST_GAME))
   ?mf <- (machine (name ?m) (desired-lights $?dl&:(> (length$ ?dl) 0)))
   =>
   (modify ?mf (desired-lights))
@@ -67,11 +66,6 @@
 	  (bind ?idx (member$ ?z-name ?*MACHINE-ZONES-MAGENTA*))
 		(return (nth$ ?idx ?*MACHINE-ZONES-CYAN*))
   )
-)
-
-(deffunction machine-team (?machine-name)
-	(bind ?prefix (sub-string 1 1 (str-cat ?machine-name)))
-	(return (if (eq ?prefix "C") then CYAN else MAGENTA))
 )
 
 (deffunction machine-init-randomize (?ring-colors)
@@ -185,6 +179,13 @@
   )
 
   (assert (machines-initialized))
+)
+
+(defrule machines-reset-print
+  (game-reset)
+  ?mf <- (machines-printed)
+  =>
+  (retract ?mf)
 )
 
 (defrule machines-print

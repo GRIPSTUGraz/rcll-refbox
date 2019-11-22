@@ -33,6 +33,7 @@ RUN dnf install -y --nodocs \
     dnf install -y --nodocs freeopcua-devel && \
     dnf install -y --nodocs rpm-build && \
     dnf clean all
+RUN dnf install -y libmodbus-devel
 COPY . /buildenv/
 SHELL ["/usr/bin/bash", "-c"]
 WORKDIR /buildenv
@@ -44,7 +45,7 @@ RUN shopt -s globstar; \
     /usr/lib/rpm/rpmdeps -P lib/** bin/** > provides.txt && \
     /usr/lib/rpm/rpmdeps -R lib/** bin/** | grep -v -f provides.txt > requires.txt
 
-FROM fedora:29
+FROM buildenv as run
 COPY --from=buildenv /buildenv/bin/* /usr/local/bin/
 COPY --from=buildenv /buildenv/lib/* /usr/local/lib64/
 COPY --from=buildenv /buildenv/src/games /usr/local/share/rcll-refbox/games

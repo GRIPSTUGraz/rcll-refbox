@@ -3,10 +3,8 @@
 ;  facts.clp - LLSF RefBox CLIPS - facts specification
 ;
 ;  Created: Mon Feb 11 13:11:45 2013
-;  Copyright  2013-2016  Tim Niemueller [www.niemueller.de]
-;             2017       Tobias Neumann
-;             2019       Till Hofmann
-;             2019       Mostafa Gomaa
+;  Copyright  2013  Tim Niemueller [www.niemueller.de]
+;             2017  Tobias Neumann
 ;  Licensed under BSD license, cf. LICENSE file
 ;---------------------------------------------------------------------------
 
@@ -24,16 +22,17 @@
   (slot productions (type INTEGER) (default 0))
   ; Overall refbox machine state
   (slot state (type SYMBOL) (allowed-values IDLE BROKEN PREPARED PROCESSING
-					    PROCESSED READY-AT-OUTPUT DOWN WAIT-IDLE))
+					    PROCESSED READY-AT-OUTPUT WAIT-IDLE DOWN))
+  ; Set on processing a state change
+  (slot proc-state (type SYMBOL) (default IDLE))
   (slot prev-state (type SYMBOL) (default IDLE))
-	; The task currently being executed on the MPS
-	(slot task (type SYMBOL))
-	(slot mps-busy (type SYMBOL) (allowed-values TRUE FALSE WAIT) (default FALSE))
-	(slot mps-ready (type SYMBOL) (allowed-values TRUE FALSE WAIT) (default FALSE))
+  ; This is the state indicated by the MPS
+  (slot mps-state-deferred (type SYMBOL) (default NONE))
+  (slot mps-state (type SYMBOL) (default IDLE))
   (slot proc-time (type INTEGER))
   (slot proc-start (type FLOAT))
   (multislot down-period (type FLOAT) (cardinality 2 2) (default -1.0 -1.0))
-  (slot broken-since (type FLOAT) (default 0.0))
+  (slot broken-since (type FLOAT))
   (slot broken-reason (type STRING))
    ; x y theta (meters and rad)
   (multislot pose (type FLOAT) (cardinality 3 3) (default 0.0 0.0 0.0))
@@ -61,9 +60,8 @@
   (slot rotation (type INTEGER) (default -1))
 
   (slot prep-blink-start (type FLOAT))
-  (slot idle-since (type FLOAT))
+  (slot retrieved-at (type FLOAT))
   (slot wait-for-product-since (type FLOAT))
-  (slot mps-base-counter (type INTEGER) (default 0))
   (slot bases-added (type INTEGER) (default 0))
   (slot bases-used (type INTEGER) (default 0))
 
@@ -76,8 +74,7 @@
   (slot ds-order (type INTEGER))
 
   (slot ss-operation (type SYMBOL) (allowed-values STORE RETRIEVE))
-  ;(multislot ss-slot (type INTEGER) (cardinality 3 3)) ; meaning defined in llsf_msgs.SSSlot
-	(slot ss-holding (type SYMBOL) (allowed-values TRUE FALSE) (default TRUE))
+  (multislot ss-slot (type INTEGER) (cardinality 3 3)) ; meaning defined in llsf_msgs.SSSlot
 
   (slot rs-ring-color (type SYMBOL)
 	(allowed-values RING_BLUE RING_GREEN RING_ORANGE RING_YELLOW))
@@ -203,32 +200,11 @@
   (multislot duration-range (type INTEGER) (cardinality 2 2) (default 60 180))
   ; Time window in which it must be delivered, set during initial randomization
   (multislot delivery-period (type INTEGER) (cardinality 2 2) (default 0 900))
-  (slot delivery-gate (type INTEGER) (default 1))
+  (slot delivery-gate (type INTEGER))
   (slot active (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
   (slot activate-at (type INTEGER) (default 0))
   (multislot activation-range (type INTEGER) (cardinality 2 2) (default 120 240))
   (slot allow-overtime (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-)
-
-(deftemplate workpiece-tracking
-    (slot enabled (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-    (slot fail-safe (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-    (slot reason (type STRING))
-    (slot broadcast (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-)
-
-(deftemplate workpiece
-	(slot id (type INTEGER))
-	(slot order (type INTEGER))
-	(slot at-machine (type SYMBOL)
-				(allowed-values C-BS C-DS C-RS1 C-RS2 C-CS1 C-CS2 M-BS M-DS M-RS1 M-RS2 M-CS1 M-CS2))
-  (slot state (type SYMBOL) (allowed-values IDLE AVAILABLE RETRIEVED) (default IDLE))
-  (slot base-color (type SYMBOL) (allowed-values nil BASE_RED BASE_SILVER BASE_BLACK BASE_CLEAR))
-  (multislot ring-colors (type SYMBOL) (cardinality 0 3)
-						 (allowed-values RING_BLUE RING_GREEN RING_ORANGE RING_YELLOW))
-  (slot cap-color (type SYMBOL) (allowed-values nil CAP_BLACK CAP_GREY))
-  (slot team (type SYMBOL) (allowed-values nil CYAN MAGENTA))
-  (slot visible (type FLOAT))
 )
 
 (deftemplate ring-spec
@@ -247,29 +223,18 @@
   (return (string-to-field (sub-string 4 (length$ ?id-string) ?id-string)))
 )
 
-(deftemplate referee-confirmation
-  (slot process-id (type INTEGER) (default-dynamic (gen-int-id)))
-  (slot state (type SYMBOL) (allowed-values REQUIRED CONFIRMED DENIED)
-        (default REQUIRED))
-)
-
-(deftemplate product-processed
+(deftemplate product-delivered
   (slot id (type INTEGER) (default-dynamic (gen-int-id)))
-  (slot workpiece (type INTEGER) (default 0))
   (slot game-time (type FLOAT))
+	(slot order (type INTEGER) (default 0))
   (slot team (type SYMBOL) (allowed-values nil CYAN MAGENTA))
-  (slot mtype (type SYMBOL) (allowed-values BS DS RS CS SS))
-  (slot at-machine (type SYMBOL)
-				(allowed-values C-BS C-DS C-RS1 C-RS2 C-CS1 C-CS2 M-BS M-DS M-RS1 M-RS2 M-CS1 M-CS2))
 	(slot delivery-gate (type INTEGER))
   (slot confirmed (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-  (slot base-color (type SYMBOL) (allowed-values nil BASE_RED BASE_SILVER BASE_BLACK))
-  (slot ring-color (type SYMBOL) (allowed-values nil RING_BLUE RING_GREEN RING_ORANGE RING_YELLOW))
-  (slot cap-color (type SYMBOL) (allowed-values nil CAP_BLACK CAP_GREY))
-  (slot scored (type SYMBOL) (allowed-values FALSE TRUE) (default FALSE))
-	(slot order (type INTEGER) (default 0))
+  (slot base-color (type SYMBOL) (allowed-values BASE_RED BASE_SILVER BASE_BLACK))
+  (multislot ring-colors (type SYMBOL) (cardinality 0 3)
+	     (allowed-values RING_BLUE RING_GREEN RING_ORANGE RING_YELLOW))
+  (slot cap-color (type SYMBOL) (allowed-values CAP_BLACK CAP_GREY))
 )
-
 
 (deftemplate gamestate
   (slot refbox-mode (type SYMBOL) (allowed-values STANDALONE) (default STANDALONE))
@@ -338,7 +303,6 @@
   (slot game-time (type FLOAT))
   (slot phase (type SYMBOL) (allowed-values EXPLORATION PRODUCTION WHACK_A_MOLE_CHALLENGE))
   (slot reason (type STRING))
-  (slot product-step (type INTEGER) (default 0))
 )
 
 (deftemplate zone-swap
@@ -377,7 +341,6 @@
   (signal (type order-info) (time (create$ 0 0)) (seq 1))
   (signal (type machine-report-info) (time (create$ 0 0)) (seq 1))
   (signal (type version-info) (time (create$ 0 0)) (seq 1))
-  (signal (type workpiece-info) (time (create$ 0 0)) (seq 1))
   (signal (type setup-light-toggle) (time (create$ 0 0)) (seq 1))
   (setup-light-toggle CS2)
   (whac-a-mole-light NONE)
@@ -439,9 +402,6 @@
   ;(machine-light-code (id 10) (code RED-BLINK))
 )
 
-; check workpiece-assign-order rule in workpieces.clp for specific
-; assumptions for the 2016 game and order to workpiece assignment!
-; Especially: single C1, C2, and C3 orders!
 (deffacts orders
   ; standing order
   (order (id  1) (complexity C0) (quantity-requested 1) (start-range 0 0)

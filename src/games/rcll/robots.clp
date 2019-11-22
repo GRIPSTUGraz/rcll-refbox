@@ -10,6 +10,7 @@
 ; Sort robots by team and name, such that do-for-all-facts on the robot deftemplate
 ; iterates in a nice order, e.g. for net-send-RobotInfo
 (defrule robots-sort
+  (declare (salience ?*PRIORITY_HIGH*))
   ?oa <- (robot (number ?number-a) (team-color ?tc-a))
   (or ?ob <- (robot (team-color ?tc-a)
 		    (number ?number-b&:(> ?number-a ?number-b)&:(< (fact-index ?oa) (fact-index ?ob))))
@@ -91,7 +92,7 @@
     (and (eq ?robot:number (pb-field-value ?p "robot_number"))
 	 (eq ?robot:team-color (sym-cat (pb-field-value ?p "team_color"))))
 
-    (if (eq (pb-field-value ?p "maintenance") TRUE)
+    (if (= (pb-field-value ?p "maintenance") 1)
     then
       (if (eq ?robot:state ACTIVE) then
 	(bind ?cycle (+ ?robot:maintenance-cycles 1))

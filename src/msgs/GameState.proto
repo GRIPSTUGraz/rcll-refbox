@@ -101,10 +101,3 @@ message SetGamePhase {
   // The new desired phase
   required GameState.Phase phase = 1;
 }
-
-message RandomizeField {
-  enum CompType {
-    COMP_ID  = 2000;
-    MSG_TYPE = 23;
-  }
-}
