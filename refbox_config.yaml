@@ -17,6 +17,12 @@ llsfrb:
     clips: clips.log
     game: game.log
 
+  sps:
+    enable: false
+    host: !ipv4 192.168.1.77
+    port: !tcp-port 502
+    test-lights: true
+
   mps:
     enable: false
     # type: 1(incoming station), 2(singel p&p), 3(double p&p), 4(delivery station)
@@ -65,7 +71,7 @@ llsfrb:
         active: false
         host: !ipv4 192.168.2.32
         port: !tcp-port 502
-        type: CS  
+        type: CS
       M-RS1:
         active: false
         host: !ipv4 192.168.2.31
@@ -102,7 +108,7 @@ llsfrb:
     protobuf-dirs: ["@BASEDIR@/src/msgs"]
 
     server-port: !tcp-port 4444
-    
+
     public-peer:
       #host: !ipv4 192.168.122.255
       host: !ipv4 BROADCAST
@@ -139,6 +145,17 @@ llsfrb:
       GRIPS: randomkey
     # whenever a random field should be generated or not (e.g. used from mongodb)
     random-field: true
+    random-machine-setup: true
+    random-orders: true
+    random-storage: true
+    restore-gamestate:
+      enable: false
+      phase: PRODUCTION
+    # load data from latest game report with a given name
+    # leave empty to always load from latest stored report
+    load-from-report: ""
+    # store game report under a name for later reference
+    store-to-report: ""
 
   shell:
     refbox-host: refbox

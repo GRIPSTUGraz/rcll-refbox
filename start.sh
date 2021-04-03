@@ -1,3 +1,4 @@
+echo "Starting new refbox version from 16.12.2020!"
 tmp=$(ifconfig eth0 | grep "broadcast")
 read tmp6 tmp5 tmp4 tmp3 tmp2 ip <<<$(IFS=" "  echo $tmp)
 cd /etc/rcll-refbox/

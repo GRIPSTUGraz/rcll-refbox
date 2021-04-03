@@ -66,7 +66,7 @@
             ((?pd product-delivered))
             (and (eq ?pd:id (pb-field-value ?p "delivery_id"))
                  (eq ?pd:confirmed FALSE))
-            (if (eq (pb-field-value ?p "correct") 1) then
+            (if (eq (pb-field-value ?p "correct") TRUE) then
               (printout t "Correct delivery for order " ?pd:order
                           " by team " ?pd:team crlf)
               (modify ?pd (confirmed TRUE))
@@ -82,6 +82,21 @@
                     ", team " (pb-field-value ?p "team_color") ")" crlf)
   )
   (retract ?pf)
+)
+
+(defrule order-referee-confirmation-automatic
+  "Automatically grant referee confirmation after DS idles,
+  if auto-confirm enabled"
+  (gamestate (phase PRODUCTION|POST_GAME))
+  (confval (path "/llsfrb/auto-confirm-delivery")
+           (type BOOL) (value true))
+  ?pf <- (product-delivered (game-time ?delivery-time) (team ?team)
+	                       (order ?id&~0) (delivery-gate ?gate)
+	                       (confirmed FALSE))
+  (order (id ?id) (active TRUE))
+  =>
+  (printout warn "Automatic confirmation of delivery" crlf)
+  (modify ?pf (confirmed TRUE))
 )
 
 

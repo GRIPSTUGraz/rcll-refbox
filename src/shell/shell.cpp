@@ -58,13 +58,12 @@
 #include <msgs/RobotCommands.pb.h>
 
 #include <cursesp.h>
+#include <boost/bind/bind.hpp>
+#include <boost/lexical_cast.hpp>
+#include <cstring>
 #include <cursesf.h>
 #include <cursesm.h>
 
-#include <boost/lexical_cast.hpp>
-#include <boost/bind.hpp>
-
-#include <cstring>
 #include <unistd.h>
 #include <modbus/modbus.h>
 
@@ -78,6 +77,7 @@
 #define MIN_NUM_ROBOTS 6
 
 using namespace protobuf_comm;
+using namespace boost::placeholders;
 
 namespace llsfrb_shell {
 #if 0 /* just to make Emacs auto-indent happy */
@@ -796,7 +796,9 @@ LLSFRefBoxShell::client_msg(uint16_t comp_id, uint16_t msg_type,
     }
     if (attmsg_has_endtime_) {
       boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-      attmsg_endtime_ = now + boost::posix_time::seconds(am->time_to_show());
+      attmsg_endtime_ = now +
+        boost::posix_time::milliseconds(static_cast<long>(1000 *
+              am->time_to_show()));
     }
     if (attmsg_string_ != "") {
       log(llsf_log_msgs::LogMessage::LL_ERROR, "A", "%s", attmsg_string_.c_str());

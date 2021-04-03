@@ -303,7 +303,8 @@
   (declare (salience ?*PRIORITY_HIGHER*))
   (gamestate (state RUNNING) (phase PRODUCTION) (game-time ?gt))
   (order (id ?order) (delivery-gate ?gate))
-  ?m <- (machine (name ?n) (mtype DS) (state PREPARED) (proc-state ~PREPARED))
+  ?m <- (machine (name ?n) (mtype DS) (state PREPARED) (proc-state ~PREPARED)
+                  (ds-order ?order))
   =>
   (printout t "Machine " ?n " of type DS switching to PREPARED state" crlf)
   (modify ?m (proc-state PREPARED) (desired-lights GREEN-BLINK)
@@ -543,13 +544,8 @@
 (defrule prod-machine-input
   (gamestate (state RUNNING) (phase PRODUCTION) (game-time ?gt))
   ?m <- (machine (name ?n) (state PREPARED))
-  (or (and (confval (path "/llsfrb/simulation/enable") (type BOOL) (value false))
-        (machine (name ?n) (wait-for-product-since ?ws&:(timeout-sec ?gt ?ws ?*PREPARE-WAIT-TILL-PROCESSING*)))
-      )
-      (and (confval (path "/llsfrb/simulation/enable") (type BOOL) (value true))
-        (machine (name ?n) (mps-state AVAILABLE))
-      )
-  )
+        (machine (name ?n) (wait-for-product-since ?ws&:(timeout-sec ?gt ?ws ?*PREPARE-WAIT-TILL-PROCESSING*))
+        (mps-state AVAILABLE))
   =>
   (modify ?m (state PROCESSING) (proc-start ?gt) (mps-state AVAILABLE-HANDLED))
 )
